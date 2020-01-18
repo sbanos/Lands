@@ -2,14 +2,21 @@
 {
     using GalaSoft.MvvmLight.Command;
     using System.Windows.Input;
+    using Services;
     using Views;
     using Xamarin.Forms;
+    using Helpers;
+    using System;
 
     public class LoginViewModel : BaseViewModel
     {
+        #region Servicios
+        private ApiService apiService;
+        #endregion
+
         #region Atributos
-        private string email;
-        private string password;
+        private string email = "pepe.gotera@gmail.com";
+        private string password = "123456";
         private bool isRunning;
         private bool isEnabled;
         #endregion
@@ -45,12 +52,10 @@
         #region Constructores
         public LoginViewModel()
         {
+            this.apiService = new ApiService();
+
             this.IsRemembered = true;
             this.IsEnabled = true;
-
-            //Temporal
-            this.Email = "santos.banos.56@gmail.com";
-            this.Password = "lavi1956";
 
             //https://restcountries.eu/rest/v2/all
         }
@@ -70,44 +75,97 @@
             if (string.IsNullOrEmpty(this.Email))
             {
                 await Application.Current.MainPage.DisplayAlert(
-                    "Error",
-                    "Debes Introducir una Dirección eMail.",
-                    "Accept");
+                    Languages.Error,
+                    Languages.EmailValidation,
+                    Languages.Accept);
                 return;
             }
 
             if (string.IsNullOrEmpty(this.Password))
             {
                 await Application.Current.MainPage.DisplayAlert(
-                    "Error",
-                    "Debes Introducir una Password.",
-                    "Accept");
+                    Languages.Error,
+                    Languages.PasswordValidation,
+                    Languages.Accept);
                 return;
             }
 
             this.IsRunning = true;
             this.IsEnabled = false;
 
-            if (this.Email != "santos.banos.56@gmail.com" || this.Password != "lavi1956")
+            var connection = await this.apiService.CheckConnection();
+
+            if (!connection.IsSuccess)
             {
                 this.IsRunning = false;
                 this.IsEnabled = true;
                 await Application.Current.MainPage.DisplayAlert(
-                    "Error",
-                    "eMail o Password Incorrecto.",
-                    "Accept");
-                this.Password = string.Empty;
+                    Languages.Error,
+                    connection.Message,
+                    Languages.Accept);
                 return;
             }
+
+            var token = await this.apiService.GetToken(
+              /*  "https://landsapi1.azurewebsites.net",*/
+                "http://sbanosdesktop.duckdns.org:82",
+                this.Email,
+                this.Password);
+
+            if (token==null)
+            {
+                this.IsRunning = false;
+                this.IsEnabled = true;
+                await Application.Current.MainPage.DisplayAlert(
+                    Languages.Error,
+                    Languages.SomethingWrong,
+                    Languages.Accept);
+                return;
+            } 
+
+            if (string.IsNullOrEmpty(token.AccessToken))
+            {
+                this.IsRunning = false;
+                this.IsEnabled = true;
+                await Application.Current.MainPage.DisplayAlert(
+                    Languages.Error,
+                    token.ErrorDescription,
+                    Languages.Accept);
+                this.Password = string.Empty;
+                return;
+            }  
+
+            var mainViewModel = MainViewModel.GetInstance();
+            mainViewModel.Token = token.AccessToken;
+            mainViewModel.TokenType = token.TokenType;
+            if (this.IsRemembered)
+            {
+                Settings.Token = token.AccessToken;
+                Settings.TokenType = token.TokenType;
+            }
+            mainViewModel.Lands = new LandsViewModel();
+            //await Application.Current.MainPage.Navigation.PushAsync(new LandsPage());
+            Application.Current.MainPage = new MasterPage();
 
             this.IsRunning = false;
             this.IsEnabled = true;
 
             this.Email = string.Empty;
             this.Password = string.Empty;
+        }
 
-            MainViewModel.GetInstance().Lands = new LandsViewModel();
-            await Application.Current.MainPage.Navigation.PushAsync(new LandsPage());
+        public ICommand RegisterCommand
+        { 
+          get
+          {
+                return new RelayCommand(Register);
+          }
+        }
+
+        private async void Register()
+        {
+            MainViewModel.GetInstance().Register = new RegisterViewModel();
+            await Application.Current.MainPage.Navigation.PushAsync(new RegisterPage());
         }
         #endregion
     }

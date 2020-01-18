@@ -2,9 +2,13 @@
 <TabbedPage 
     xmlns="http://xamarin.com/schemas/2014/forms"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:i18n="clr-namespace:Lands.Helpers"
     xmlns:tabs="clr-namespace:Lands.Views"
+    xmlns:android="clr-namespace:Xamarin.Forms.PlatformConfiguration.AndroidSpecific;assembly=Xamarin.Forms.Core"
     x:Class="Lands.Views.LandTabbedPage"
-    Title="Land">
+    android:TabbedPage.ToolbarPlacement="Bottom"
+    Title="{i18n:Translate Country}"
+    BarBackgroundColor="#F7A79B">
     <TabbedPage.Children>
         <tabs:LandPage/>
         <tabs:BordersPage/>
